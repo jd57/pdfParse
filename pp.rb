@@ -103,7 +103,28 @@ class PDF
     def test str
       hex=match_stream(str)
       txt= Zlib::Inflate.inflate(hex)
-      puts txt
+      txt
+      t=txt.scan(/BT(.*?)ET/m)
+      t.each do |e|
+        e[0].scan(/\[(.*?)\]TJ/m).each do |j|
+	puts
+	puts "======================="
+	pp j
+	  j[0].scan(/-?\d*\(.*?\)/).each do |c|
+	  puts "-------------------"
+	  pp c
+	    case c
+	    when /-\d*\((.*?)\)/
+	    print " "+$1
+	    when /\d+\((.*?)\)/
+	    print $1
+	    else /\((.*?)\)/
+	    print $1
+	    end
+	  end
+	end
+	puts
+      end
 #      puts txt.scan(/\((.*?)\)/).join(" ")
     end
     def get_sidx
