@@ -197,6 +197,47 @@ class PDF
     end
   end
 end 
+class STREAM
+  class << self
+    def test str
+      txt= Zlib::Inflate.inflate(str)
+      txt
+      t=txt.scan(/BT(.*?)ET/m)
+      t.each do |e|
+        e[0].scan(/\[(.*?)\]TJ/m).each do |j|
+	pp "==================="
+	pp j
+	pp "--------------------"
+
+	  j[0].scan(/-?\d*\(.*?\)/).each do |c|
+	    m=c.match(/(?<s>-)?(?<d>\d+)?\((?<n>.*)\)/)
+	    print " " if m[:s]
+	    print m[:n]
+	  end
+	  print " "
+	end
+	puts
+      end
+    end
+    def init str
+    @@name=str
+    f=File.open(@@name)
+    1000.times do 
+       f.gets(sep='stream')
+       f.gets
+       s= f.gets(sep='endstream')[0..-12]
+#       f= Zlib::Inflate.inflate(s)
+begin 
+       test s
+       rescue
+       end
+    end
+
+    f.close
+    end
+  end
+end
+  
 
 #f=File.open("sample.pdf")
 #f.sysseek(sidx,IO::SEEK_SET)
@@ -204,5 +245,6 @@ end
 #pp f.gets
 
 #PDF.init("sample.pdf")
-PDF.init ARGV[0]
+#PDF.init ARGV[0]
+STREAM.init ARGV[0]
 
