@@ -40,6 +40,8 @@ class PDF
   class << self
     def init str
       @@name=str
+      @@pages=[]
+      @@Contents=[]
       @@content=File.read(str)
       @@hex = @@content.hex
       @@idf=Hash[
@@ -53,10 +55,41 @@ class PDF
       get_trailer
       get_xref
       get_obj
-      txt= @@obj[121]
-      test txt
+      try_pages
+      pp @@Contents
+      @@Contents.each do |e|
+        test @@obj[e]
+      end
+#      txt= @@obj[121]
+#      test txt
 
       self.make "test.pdf"
+    end
+    def get_ids str
+      return str.scan(/(\d+) \d+ R/).flatten.map(&:to_i)
+    end
+    def get_kids str
+      get_ids(str.match(/\/Kids \[(.*?)\]/)[1])
+    end
+    def get_more_pages str
+      case str
+      when /\/Type \/Pages/
+        kids=get_kids(str)
+	kids.each do |e|
+	  get_more_pages @@obj[e]
+	end
+      when /\/Type \/Page/
+        @@Contents.push str.match(/\/Contents (\d+) \d+ R/)[1].to_i
+      end
+    end
+    def try_pages
+      @@catalog_id= @@trailer.match(/\/Root (\d+) \d+ R/)[1].to_i
+      @@catalog=@@obj[@@catalog_id]
+
+      first_page_id=@@catalog.match(/\/Pages (\d+) \d+ R/)[1].to_i
+      first_page=@@obj[first_page_id]
+
+      get_more_pages first_page
     end
     def make name
       @@newXref=[]
@@ -107,25 +140,15 @@ class PDF
       t=txt.scan(/BT(.*?)ET/m)
       t.each do |e|
         e[0].scan(/\[(.*?)\]TJ/m).each do |j|
-	puts
-	puts "======================="
-	pp j
 	  j[0].scan(/-?\d*\(.*?\)/).each do |c|
-	  puts "-------------------"
-	  pp c
-	    case c
-	    when /-\d*\((.*?)\)/
-	    print " "+$1
-	    when /\d+\((.*?)\)/
-	    print $1
-	    else /\((.*?)\)/
-	    print $1
-	    end
+	    m=c.match(/(?<s>-)?(?<d>\d+)?\((?<n>.*)\)/)
+	    print " " if m[:s]
+	    print m[:n]
 	  end
+	  print " "
 	end
 	puts
       end
-#      puts txt.scan(/\((.*?)\)/).join(" ")
     end
     def get_sidx
       @@sidx=@@hex.match(/#{@@idf[:startxref]}#{@@idf[:com]}(?<sxref>.*?)#{@@idf[:com]}#{@@idf[:EOF]}/)[:sxref].raw.i10
@@ -156,6 +179,8 @@ class PDF
       f.gets
       []
       start,num= f.gets.split
+      pp start
+      pp num
       if start=="0"
         @@xref=(0...num.to_i).map do |n|
         f.gets.split
@@ -174,5 +199,6 @@ end
 #pp f.gets
 #pp f.gets
 
-PDF.init("sample.pdf")
+#PDF.init("sample.pdf")
+PDF.init ARGV[0]
 
